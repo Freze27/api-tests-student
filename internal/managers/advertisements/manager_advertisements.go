@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"api-tests-template/internal/client/http/advertisements"
 	"api-tests-template/internal/managers/advertisements/models"
+	"api-tests-template/internal/managers/myAdvertisements"
 )
 
 func GetAdvertisementsList(t *testing.T, token, text string) models.AdvertisementsList {
@@ -105,4 +107,27 @@ func DeleteAdvertisement(t *testing.T, token, id string) {
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusNoContent, raw.StatusCode,
 		"HTTP status code должен быть %d, тело ответа: %s", http.StatusNoContent, string(body))
+}
+
+// myAdvertisementsLimit максимальное количество собственных объявлений, которое запрашивается для очистки
+const myAdvertisementsLimit = 50
+
+// DeleteMyAdvertisementsByTitlePrefix удаляет объявления пользователя, название которых начинается с префикса,
+// и возвращает id удалённых объявлений. Нужна для очистки объявлений, оставшихся от прерванных прогонов тестов
+func DeleteMyAdvertisementsByTitlePrefix(t *testing.T, token, titlePrefix string) []string {
+	body := myAdvertisements.GetMyAdvertisements(t, token, http.StatusOK, myAdvertisementsLimit)
+
+	myAds := models.AdvertisementsList{}
+	err := json.Unmarshal([]byte(body), &myAds)
+	require.NoError(t, err)
+
+	var deletedIds []string
+	for _, ad := range myAds.Items {
+		if strings.HasPrefix(ad.Title, titlePrefix) {
+			DeleteAdvertisement(t, token, ad.Id)
+			deletedIds = append(deletedIds, ad.Id)
+		}
+	}
+
+	return deletedIds
 }

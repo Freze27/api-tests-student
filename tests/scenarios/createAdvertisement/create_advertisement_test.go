@@ -72,6 +72,10 @@ func (s *TestSuite) SetupSuite() {
 	base.Precondition("Авторизация пользователя с кредами из переменных окружения и получение его параметров")
 	s.loginData = auth.Login(s.T(), os.Getenv("TEST_LOGIN"), os.Getenv("TEST_PASSWORD"))
 
+	base.Precondition("Удаляем объявления, оставшиеся от прерванных прогонов")
+	deletedIds := advManager.DeleteMyAdvertisementsByTitlePrefix(s.T(), s.loginData.Token, titlePrefix+" ")
+	base.Precondition(fmt.Sprintf("Удалено оставшихся объявлений: %d", len(deletedIds)))
+
 	base.Precondition("Проверяем, что тестовая фотография для загрузки существует")
 	require.FileExists(s.T(), photoFilePath, "Не найден тестовый файл фотографии")
 }
