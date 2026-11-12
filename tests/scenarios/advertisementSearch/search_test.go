@@ -10,6 +10,7 @@ import (
 
 	"api-tests-template/internal/assertions"
 	advList "api-tests-template/internal/managers/advertisements"
+	advModels "api-tests-template/internal/managers/advertisements/models"
 	"api-tests-template/internal/managers/auth"
 	"api-tests-template/internal/managers/auth/models"
 	"api-tests-template/internal/utils"
@@ -42,19 +43,29 @@ func (s *TestSuite) SetupSuite() {
 	require.NotEmpty(s.T(), searchMiddle, "задайте searchMiddle")
 	require.NotEmpty(s.T(), searchEnd, "задайте searchEnd")
 
+	base.Precondition("Авторизация пользователя с кредами из переменных окружения и получение его параметров")
 	s.loginData = auth.Login(s.T(), os.Getenv("TEST_LOGIN"), os.Getenv("TEST_PASSWORD"))
 }
 
+func (s *TestSuite) TearDownSuite() {
+	base.TearDownSuite()
+}
+
+// Positive: Проверяем, что поиск по части названия находит существующее объявление
 func (s *TestSuite) TestSearchByTitle() {
-	list := advList.GetAdvertisementsList(s.T(), s.loginData.Token, searchMiddle)
-	s.Run("В ответе есть хотя бы одно объявление", func() {
-		require.NotEmpty(s.T(), list.Items)
+	var list advModels.AdvertisementsList
+	s.Run("Ищем объявления по части названия", func() {
+		list = advList.GetAdvertisementsList(s.T(), s.loginData.Token, searchMiddle)
 	})
-	s.Run("Среди найденных есть наше объявление", func() {
+	s.Run("Проверяем, что в ответе есть хотя бы одно объявление", func() {
+		require.NotEmpty(s.T(), list.Items, "Поиск вернул пустой список объявлений")
+	})
+	s.Run("Проверяем, что среди найденных есть наше объявление", func() {
 		assertions.ContainsAdvertisementByTitle(s.T(), list.Items, existingAdTitle)
 	})
 }
 
+// Positive: Проверяем поиск по началу, середине и концу названия и независимость от регистра
 func (s *TestSuite) TestSearchByTitle_Substring() {
 	cases := []struct {
 		name   string
