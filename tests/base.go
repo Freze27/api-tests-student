@@ -21,3 +21,8 @@ func TearDownSuite() {
 func Precondition(text string) {
 	utils.LogWithLabelAndTimeStamp("Precondition", text)
 }
+
+// Postcondition выводит текст в консоль с меткой [Postcondition]
+func Postcondition(text string) {
+	utils.LogWithLabelAndTimeStamp("Postcondition", text)
+}
