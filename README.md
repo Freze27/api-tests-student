@@ -21,12 +21,17 @@
    go mod tidy
 ```
 
-7. В файле `.env.override` (создайте его в корне, если нет) выставьте правильные значения для переменных окружения:
+7. Зарегистрируйте на [TestBoard](https://testboard.avito.com/) два аккаунта и в файле `.env.override` (создайте его в корне, если нет) выставьте правильные значения для переменных окружения:
 
 ```
 TEST_LOGIN=your_login
 TEST_PASSWORD=your_password
+TEST_SECOND_LOGIN=your_second_login
+TEST_SECOND_PASSWORD=your_second_password
 ```
+
+   - `TEST_LOGIN` / `TEST_PASSWORD` — основной аккаунт, используется во всех тестах.
+   - `TEST_SECOND_LOGIN` / `TEST_SECOND_PASSWORD` — второй аккаунт, нужен только тестам избранного: он создаёт объявления, которые основной аккаунт добавляет в избранное (своё объявление в избранное добавить нельзя).
 
 8. Для запуска всех тестов достаточно выполнить команду в корне проекта:
 
@@ -39,6 +44,13 @@ TEST_PASSWORD=your_password
 ```bash
   go test -v ./tests/scenarios/myAdvertisement/
 ```
+
+| Путь к пакету                            | Тесты                            |
+|------------------------------------------|----------------------------------|
+| `./tests/scenarios/myAdvertisement/`     | Получение собственных объявлений |
+| `./tests/scenarios/advertisementSearch/` | Поиск объявлений по названию     |
+| `./tests/scenarios/createAdvertisement/` | Создание объявления              |
+| `./tests/scenarios/favorites/`           | Работа с избранным               |
 
 ## Логирование
 
