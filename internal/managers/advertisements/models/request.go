@@ -3,7 +3,7 @@ package models
 type CreateAdvertisementRequest struct {
 	Title       *string
 	Description *string
-	Price       *float64
-	Quantity    *int
+	Price       *string
+	Quantity    *string
 	PhotoPaths  []string
 }

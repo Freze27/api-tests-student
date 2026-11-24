@@ -2,7 +2,6 @@ package advertisements
 
 import (
 	"net/http"
-	"strconv"
 	"testing"
 
 	"api-tests-template/internal/constants/path"
@@ -31,10 +30,10 @@ func HttpPostAdvertisement(t *testing.T, token string, request advModels.CreateA
 		req = req.MultipartFormData("description", *request.Description)
 	}
 	if request.Price != nil {
-		req = req.MultipartFormData("price", strconv.FormatFloat(*request.Price, 'f', -1, 64))
+		req = req.MultipartFormData("price", *request.Price)
 	}
 	if request.Quantity != nil {
-		req = req.MultipartFormData("quantity", strconv.Itoa(*request.Quantity))
+		req = req.MultipartFormData("quantity", *request.Quantity)
 	}
 	for _, photoPath := range request.PhotoPaths {
 		req = req.MultipartFile("photos", photoPath)

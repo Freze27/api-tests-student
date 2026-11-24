@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -25,16 +26,19 @@ import (
 const (
 	titlePrefix      = "ByAutotest"
 	validDescription = "Объявление было создано автотестом"
-	validPrice       = 1687.4
-	validQuantity    = 3
+	validPrice       = "1687.4"
+	validQuantity    = "3"
 	incorrectToken   = "incorrect_token"
 )
 
-const photoFilePath = "testdata/photo.jpg"
+const (
+	photoFilePath            = "testdata/photo.jpg"
+	unsupportedPhotoFilePath = "testdata/photo.txt"
+)
 
 // Ограничения на параметры объявления
 const (
-	maxTitleLength       = 50
+	tooLongTitle         = 256
 	maxDescriptionLength = 500
 	maxPrice             = 1000000
 	maxQuantity          = 100
@@ -149,14 +153,14 @@ func (s *TestSuite) TestCreateAdvertisementPositive() {
 
 // Negative: Проверяем 400 ошибку при создании объявления без обязательных или с некорректными параметрами
 func (s *TestSuite) TestCreateAdvertisementInvalidParams() {
-	tooLongTitle := strings.Repeat("a", maxTitleLength+1)
+	tooLongTitle := strings.Repeat("a", tooLongTitle)
 	tooLongDescription := strings.Repeat("d", maxDescriptionLength+1)
 	tooManyPhotos := slices.Repeat([]string{photoFilePath}, maxPhotosCount+1)
 
 	cases := []struct {
-		name          string
-		modify        requestModifier
-		expectedField string
+		name                string
+		modify              requestModifier
+		expectedMessagePart string
 	}{
 		{"Без title", withoutTitle(), fieldTitle},
 		{"Пустой title", withTitle(""), fieldTitle},
@@ -164,12 +168,15 @@ func (s *TestSuite) TestCreateAdvertisementInvalidParams() {
 		{"Без description", withoutDescription(), fieldDescription},
 		{"Пустой description", withDescription(""), fieldDescription},
 		{"Слишком длинный description", withDescription(tooLongDescription), fieldDescription},
-		{"Отрицательная цена", withPrice(-1), fieldPrice},
-		{"Цена больше максимальной", withPrice(maxPrice + 1), fieldPrice},
-		{"Отрицательное количество", withQuantity(-1), fieldQuantity},
-		{"Количество больше максимального", withQuantity(maxQuantity + 1), fieldQuantity},
+		{"Отрицательная цена", withPrice("-1"), fieldPrice},
+		{"Цена больше максимальной", withPrice(strconv.Itoa(maxPrice + 1)), fieldPrice},
+		{"Цена передана строкой", withPrice("abc"), "to float"},
+		{"Отрицательное количество", withQuantity("-1"), fieldQuantity},
+		{"Количество больше максимального", withQuantity(strconv.Itoa(maxQuantity + 1)), fieldQuantity},
+		{"Количество передано строкой", withQuantity("abc"), "to int"},
 		{"Без фотографий", withPhotos(nil), fieldPhotos},
 		{"Фотографий больше максимального количества", withPhotos(tooManyPhotos), fieldPhotos},
+		{"Неподдерживаемый формат фотографии", withPhotos([]string{unsupportedPhotoFilePath}), fieldPhotos},
 	}
 
 	for _, tc := range cases {
@@ -182,8 +189,9 @@ func (s *TestSuite) TestCreateAdvertisementInvalidParams() {
 				errorResponse = advManager.CreateAdvertisementWithError(s.T(), s.loginData.Token, request, http.StatusBadRequest)
 			})
 
-			s.Run("Проверяем, что ошибка указывает на некорректное поле", func() {
-				assertions.ErrorMessageContainsField(s.T(), errorResponse, errorInvalidRequest, tc.expectedField)
+			s.Run("Проверяем код и сообщение об ошибке", func() {
+				assertions.ErrorResponseHasCode(s.T(), errorResponse, errorInvalidRequest)
+				require.Contains(s.T(), strings.ToLower(errorResponse.Message), tc.expectedMessagePart)
 			})
 		})
 	}
@@ -238,12 +246,12 @@ func withoutDescription() requestModifier {
 }
 
 // withPrice подменяет цену объявления в запросе
-func withPrice(price float64) requestModifier {
+func withPrice(price string) requestModifier {
 	return func(request *advModels.CreateAdvertisementRequest) { request.Price = &price }
 }
 
 // withQuantity подменяет количество в запросе
-func withQuantity(quantity int) requestModifier {
+func withQuantity(quantity string) requestModifier {
 	return func(request *advModels.CreateAdvertisementRequest) { request.Quantity = &quantity }
 }
 

@@ -2,6 +2,7 @@ package assertions
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -32,8 +33,23 @@ func AdvertisementMatchesRequest(t *testing.T, request models.CreateAdvertisemen
 	require.NotNil(t, request.Description, "В запросе на создание не задан description")
 	require.Equal(t, *request.Title, actual.Title, "title не совпадает с переданным при создании")
 	require.Equal(t, *request.Description, actual.Description, "description не совпадает с переданным при создании")
-	require.Equal(t, request.Price, actual.Price, "price не совпадает с переданным при создании")
-	require.Equal(t, request.Quantity, actual.Quantity, "quantity не совпадает с переданным при создании")
+
+	var expectedPrice *float64
+	if request.Price != nil {
+		price, err := strconv.ParseFloat(*request.Price, 64)
+		require.NoError(t, err, "price в запросе должен быть числом")
+		expectedPrice = &price
+	}
+	require.Equal(t, expectedPrice, actual.Price, "price не совпадает с переданным при создании")
+
+	var expectedQuantity *int
+	if request.Quantity != nil {
+		quantity, err := strconv.Atoi(*request.Quantity)
+		require.NoError(t, err, "quantity в запросе должен быть целым числом")
+		expectedQuantity = &quantity
+	}
+	require.Equal(t, expectedQuantity, actual.Quantity, "quantity не совпадает с переданным при создании")
+
 	require.Lenf(t, actual.Photos, len(request.PhotoPaths),
 		"Количество фотографий должно быть %d", len(request.PhotoPaths))
 }
