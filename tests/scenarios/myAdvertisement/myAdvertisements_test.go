@@ -1,14 +1,20 @@
 package myAdvertisement
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
 
+	"api-tests-template/internal/assertions"
+	advManager "api-tests-template/internal/managers/advertisements"
+	advModels "api-tests-template/internal/managers/advertisements/models"
 	"api-tests-template/internal/managers/auth"
 	"api-tests-template/internal/managers/auth/models"
 	"api-tests-template/internal/managers/myAdvertisements"
@@ -16,9 +22,16 @@ import (
 	base "api-tests-template/tests"
 )
 
+const (
+	titlePrefix      = "MyAdsAutotest"
+	validDescription = "Объявление для проверки своих объявлении, создано автотестом"
+	photoFilePath    = "testdata/photo.jpg"
+)
+
 type TestSuite struct {
 	suite.Suite
 	loginData models.LoginOkResponse
+	ownAdId   string
 }
 
 func TestSuiteRun(t *testing.T) {
@@ -36,29 +49,55 @@ func (s *TestSuite) TearDownSuite() {
 	base.TearDownSuite()
 }
 
+func (s *TestSuite) SetupTest() {
+	s.ownAdId = ""
+
+	base.Precondition("Создаём объявление от основного пользователя")
+	ad := advManager.CreateAdvertisement(s.T(), s.loginData.Token, newAdvertisementRequest())
+	s.ownAdId = ad.Id
+	require.NotEmpty(s.T(), s.ownAdId, "id созданного объявления пустой")
+}
+
+func (s *TestSuite) TearDownTest() {
+	if s.ownAdId != "" {
+		base.Postcondition(fmt.Sprintf("Удаляем объявление основного пользователя %s", s.ownAdId))
+		advManager.DeleteAdvertisement(s.T(), s.loginData.Token, s.ownAdId)
+	}
+}
+
+func newAdvertisementRequest() advModels.CreateAdvertisementRequest {
+	title := fmt.Sprintf("%s %s", titlePrefix, uuid.NewString())
+	description := validDescription
+
+	return advModels.CreateAdvertisementRequest{
+		Title:       &title,
+		Description: &description,
+		PhotoPaths:  []string{photoFilePath},
+	}
+}
+
 // Positive: Проверяем получение собственных объявлений в профиле
 func (s *TestSuite) TestGetMyAdvertisementsPositive() {
-	var advertisementsBody string
+	var list advModels.AdvertisementsList
 	s.Run("Получаем список собственных объявлений", func() {
-		advertisementsBody = myAdvertisements.GetMyAdvertisements(s.T(), s.loginData.Token, http.StatusOK, 50)
+		body := myAdvertisements.GetMyAdvertisements(s.T(), s.loginData.Token, http.StatusOK, 50)
+		require.NoError(s.T(), json.Unmarshal([]byte(body), &list))
 	})
 
-	var items gjson.Result
-	s.Run("Проверяем, что у нас есть несколько добавленных ранее объявлений", func() {
-		items = gjson.Get(advertisementsBody, "items")
-		require.NotEmpty(s.T(), items.Array())
+	s.Run("Проверяем, что созданное объявление есть в списке", func() {
+		assertions.ContainsAdvertisementById(s.T(), list.Items, s.ownAdId)
 	})
 
 	s.Run("Проверяем, что наши объявления имеют принадлежность к нашему пользователю и объявления имеют НЕ пустые параметры", func() {
-		for _, item := range items.Array() {
-			require.Equal(s.T(), s.loginData.User.Id, gjson.Get(item.String(), "user_id").String(), "user_id не совпадает")
+		for _, item := range list.Items {
+			require.Equal(s.T(), s.loginData.User.Id, item.UserId, "user_id не совпадает")
 
-			require.NotEmpty(s.T(), gjson.Get(item.String(), "id").String(), "id пустое")
-			require.NotEmpty(s.T(), gjson.Get(item.String(), "created_at").String(), "created_at пустое")
-			require.NotEmpty(s.T(), gjson.Get(item.String(), "updated_at").String(), "updated_at пустое")
-			require.NotEmpty(s.T(), gjson.Get(item.String(), "title").String(), "Название пустое")
-			require.NotEmpty(s.T(), gjson.Get(item.String(), "description").String(), "Описание пустое")
-			require.True(s.T(), len(gjson.Get(item.String(), "photos").Array()) > 0, "Присутствуют пустые фотографии")
+			require.NotEmpty(s.T(), item.Id, "id пустое")
+			require.NotEmpty(s.T(), item.CreatedAt, "created_at пустое")
+			require.NotEmpty(s.T(), item.UpdatedAt, "updated_at пустое")
+			require.NotEmpty(s.T(), item.Title, "Название пустое")
+			require.NotEmpty(s.T(), item.Description, "Описание пустое")
+			require.NotEmpty(s.T(), item.Photos, "Список фотографий пуст")
 		}
 	})
 }
