@@ -86,13 +86,14 @@ func (s *TestSuite) titleParts() (string, string, string) {
 	return string(title[:partLength]), string(title[partLength : 2*partLength]), string(title[2*partLength:])
 }
 
-// Positive: Проверяем поиск по началу, середине и концу названия и независимость от регистра
+// Positive: Проверяем поиск по полному названию и его частям, а также независимость от регистра
 func (s *TestSuite) TestSearchByTitle_Substring() {
 	searchBeginning, searchMiddle, searchEnd := s.titleParts()
 	cases := []struct {
 		name   string
 		search string
 	}{
+		{"полное название", s.adTitle},
 		{"начало", searchBeginning},
 		{"середина", searchMiddle},
 		{"конец", searchEnd},
