@@ -86,21 +86,6 @@ func (s *TestSuite) titleParts() (string, string, string) {
 	return string(title[:partLength]), string(title[partLength : 2*partLength]), string(title[2*partLength:])
 }
 
-// Positive: Проверяем, что поиск по части названия находит созданное объявление
-func (s *TestSuite) TestSearchByTitle() {
-	_, searchMiddle, _ := s.titleParts()
-	var list advModels.AdvertisementsList
-	s.Run("Ищем объявления по части названия", func() {
-		list = advManager.GetAdvertisementsList(s.T(), s.loginData.Token, searchMiddle)
-	})
-	s.Run("Проверяем, что в ответе есть хотя бы одно объявление", func() {
-		require.NotEmpty(s.T(), list.Items, "Поиск вернул пустой список объявлений")
-	})
-	s.Run("Проверяем, что среди найденных есть наше объявление", func() {
-		assertions.ContainsAdvertisementById(s.T(), list.Items, s.adId)
-	})
-}
-
 // Positive: Проверяем поиск по началу, середине и концу названия и независимость от регистра
 func (s *TestSuite) TestSearchByTitle_Substring() {
 	searchBeginning, searchMiddle, searchEnd := s.titleParts()
